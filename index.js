@@ -10,6 +10,22 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 app.use(cors());
 app.use(express.json());
 
+// JWT verification middleware
+const verifyToken = (req, res, next) => {
+    console.log('token inside verifyToken', req.headers.authorization);
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+    const token = authorization.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ message: 'unauthorized access' });
+        }
+        req.decoded = decoded;
+        next();
+    });
+};
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.deftcj8.mongodb.net/?appName=Cluster0`;
@@ -37,22 +53,7 @@ async function run() {
             res.send({ token });
         });
 
-        // JWT verification middleware
-        const verifyToken = (req, res, next) => {
-            console.log('token inside verifyToken', req.headers.authorization);
-            const authorization = req.headers.authorization;
-            if (!authorization) {
-                return res.status(401).send({ message: 'unauthorized access' });
-            }
-            const token = authorization.split(' ')[1];
-            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-                if (err) {
-                    return res.status(401).send({ message: 'unauthorized access' });
-                }
-                req.decoded = decoded;
-                next();
-            });
-        };
+
 
 
         //user releted api
@@ -73,11 +74,10 @@ async function run() {
 
         app.post('/users', async (req, res) => {
             const user = req.body;
-            // Check if user already exists (optional but recommended)
             const query = { email: user.email };
             const existingUser = await usersCollection.findOne(query);
             if (existingUser) {
-                return res.send({ message: 'user already exists', insertedId: null });
+                return res.send({ message: 'User already exists' });
             }
             const result = await usersCollection.insertOne(user);
             res.send(result);
