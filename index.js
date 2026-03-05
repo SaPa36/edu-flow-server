@@ -41,6 +41,17 @@ const verifyAdmin = async (req, res, next) => {
   next();
 };
 
+//use verify teacher after verify token
+const verifyTeacher = async (req, res, next) => {
+    const email = req.decoded.email;
+    const query = { email: email };
+    const user = await usersCollection.findOne(query);
+    if (user?.role !== 'teacher') {
+        return res.status(403).send({ message: 'forbidden access' });
+    }
+    next();
+};
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.deftcj8.mongodb.net/?appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -91,6 +102,21 @@ async function run() {
       const result = await teachersRequestCollection.findOne(query);
       res.send(result);
     });
+
+    //check Teacher
+    app.get("/users/teacher/:email", verifyToken, async (req, res) => {
+        const email = req.params.email;
+        if (req.decoded.email !== email) {
+          return res.status(403).send({ message: "forbidden access" });
+        }
+        const query = { email: email };
+        const user = await usersCollection.findOne(query);
+        let teacher = false;
+        if (user?.role === "teacher") {
+          teacher = true;
+        }
+        res.send({ teacher });
+      });
 
     // Update this route in your server.js
     app.patch(
