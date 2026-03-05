@@ -72,6 +72,7 @@ async function run() {
     const teachersRequestCollection = client
       .db("eduflowDB")
       .collection("teachers-request");
+    const classesCollection = client.db("eduflowDB").collection("classes");
 
     // JWT releted API
     app.post("/jwt", (req, res) => {
@@ -207,6 +208,13 @@ async function run() {
         return res.send({ message: "User already exists" });
       }
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    //classes related api
+    app.post("/classes", verifyToken, verifyTeacher, async (req, res) => {
+      const newClass = req.body;
+      const result = await classesCollection.insertOne(newClass);
       res.send(result);
     });
 
