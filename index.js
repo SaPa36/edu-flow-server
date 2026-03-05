@@ -10,6 +10,9 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 app.use(cors());
 app.use(express.json());
 
+// 1. GLOBAL VARIABLE (The Key)
+let usersCollection;
+
 // JWT verification middleware
 const verifyToken = (req, res, next) => {
     console.log('token inside verifyToken', req.headers.authorization);
@@ -31,7 +34,7 @@ const verifyToken = (req, res, next) => {
 const verifyAdmin = async (req, res, next) => {
     const email = req.decoded.email;
     const query = { email: email };
-    const user = await userCollection.findOne(query);
+    const user = await usersCollection.findOne(query);
     if (user?.role !== 'admin') {
         return res.status(403).send({ message: 'forbidden access' });
     }
@@ -55,7 +58,8 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-        const usersCollection = client.db('eduflowDB').collection('users');
+        usersCollection = client.db('eduflowDB').collection('users');
+        const teachersRequestCollection = client.db('eduflowDB').collection('teachers-request');
 
         // JWT releted API
         app.post('/jwt', (req, res) => {
@@ -64,8 +68,12 @@ async function run() {
             res.send({ token });
         });
 
-
-
+        //teachers request api
+        app.post('/teachers-request', async (req, res) => {
+            const request = req.body;
+            const result = await teachersRequestCollection.insertOne(request);
+            res.send(result);
+        });
 
         //user releted api
         app.get('/users', verifyToken, async (req, res) => {
