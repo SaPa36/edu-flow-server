@@ -27,6 +27,17 @@ const verifyToken = (req, res, next) => {
     });
 };
 
+//use verify admin after verify token
+const verifyAdmin = async (req, res, next) => {
+    const email = req.decoded.email;
+    const query = { email: email };
+    const user = await userCollection.findOne(query);
+    if (user?.role !== 'admin') {
+        return res.status(403).send({ message: 'forbidden access' });
+    }
+    next();
+};
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.deftcj8.mongodb.net/?appName=Cluster0`;
 
@@ -87,7 +98,7 @@ async function run() {
             res.send({ admin });
         });
 
-        app.patch('/users/admin/:id', verifyToken, async (req, res) => {
+        app.patch('/users/admin/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const updatedDoc = {
