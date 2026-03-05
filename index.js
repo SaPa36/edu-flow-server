@@ -69,7 +69,14 @@ async function run() {
         });
 
         //teachers request api
-        app.post('/teachers-request', async (req, res) => {
+
+        app.get('/teachers-requests', async (req, res) => {
+            const cursor = teachersRequestCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+        
+        app.post('/teachers-requests', async (req, res) => {
             const request = req.body;
             const result = await teachersRequestCollection.insertOne(request);
             res.send(result);
