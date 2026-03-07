@@ -43,13 +43,13 @@ const verifyAdmin = async (req, res, next) => {
 
 //use verify teacher after verify token
 const verifyTeacher = async (req, res, next) => {
-    const email = req.decoded.email;
-    const query = { email: email };
-    const user = await usersCollection.findOne(query);
-    if (user?.role !== 'teacher') {
-        return res.status(403).send({ message: 'forbidden access' });
-    }
-    next();
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await usersCollection.findOne(query);
+  if (user?.role !== "teacher") {
+    return res.status(403).send({ message: "forbidden access" });
+  }
+  next();
 };
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.deftcj8.mongodb.net/?appName=Cluster0`;
@@ -106,18 +106,18 @@ async function run() {
 
     //check Teacher
     app.get("/users/teacher/:email", verifyToken, async (req, res) => {
-        const email = req.params.email;
-        if (req.decoded.email !== email) {
-          return res.status(403).send({ message: "forbidden access" });
-        }
-        const query = { email: email };
-        const user = await usersCollection.findOne(query);
-        let teacher = false;
-        if (user?.role === "teacher") {
-          teacher = true;
-        }
-        res.send({ teacher });
-      });
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      let teacher = false;
+      if (user?.role === "teacher") {
+        teacher = true;
+      }
+      res.send({ teacher });
+    });
 
     // Update this route in your server.js
     app.patch(
@@ -212,40 +212,68 @@ async function run() {
     });
 
     //classes related api
-
-    app.get('/classes/:email', verifyToken, verifyTeacher, async (req, res) => {
-        try {
-            const email = req.params.email;
-            
-            // Security Check: Ensure the requested email matches the token's email
-            if (req.decoded.email !== email) {
-                return res.status(403).send({ message: 'forbidden access' });
-            }
-    
-            const query = { email: email };
-            const result = await classesCollection.find(query).toArray();
-            res.send(result);
-        } catch (error) {
-            res.status(500).send({ message: "Error fetching teacher classes", error });
-        }
+    app.get("/classes", async (req, res) => {
+      try {
+        const cursor = classesCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching classes", error });
+      }
     });
 
-    app.delete('/classes/:id', verifyToken, verifyTeacher, async (req, res) => {
-        try {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) };
-    
-            // Optional: Ensure the person deleting the class is the one who created it
-            const targetClass = await classesCollection.findOne(query);
-            if (targetClass.email !== req.decoded.email) {
-                return res.status(403).send({ message: 'You can only delete your own classes' });
-            }
-    
-            const result = await classesCollection.deleteOne(query);
-            res.send(result);
-        } catch (error) {
-            res.status(500).send({ message: "Error deleting class", error });
+    app.get("/classes/:email", verifyToken, verifyTeacher, async (req, res) => {
+      try {
+        const email = req.params.email;
+
+        // Security Check: Ensure the requested email matches the token's email
+        if (req.decoded.email !== email) {
+          return res.status(403).send({ message: "forbidden access" });
         }
+
+        const query = { email: email };
+        const result = await classesCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Error fetching teacher classes", error });
+      }
+    });
+
+    // 2. Patch status update
+    app.patch(
+      "/classes/status/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const { status } = req.body;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = { $set: { status: status } };
+        const result = await classesCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
+
+    app.delete("/classes/:id", verifyToken, verifyTeacher, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+
+        // Optional: Ensure the person deleting the class is the one who created it
+        const targetClass = await classesCollection.findOne(query);
+        if (targetClass.email !== req.decoded.email) {
+          return res
+            .status(403)
+            .send({ message: "You can only delete your own classes" });
+        }
+
+        const result = await classesCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error deleting class", error });
+      }
     });
 
     app.post("/classes", verifyToken, verifyTeacher, async (req, res) => {
