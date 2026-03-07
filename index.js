@@ -212,6 +212,42 @@ async function run() {
     });
 
     //classes related api
+
+    app.get('/classes/:email', verifyToken, verifyTeacher, async (req, res) => {
+        try {
+            const email = req.params.email;
+            
+            // Security Check: Ensure the requested email matches the token's email
+            if (req.decoded.email !== email) {
+                return res.status(403).send({ message: 'forbidden access' });
+            }
+    
+            const query = { email: email };
+            const result = await classesCollection.find(query).toArray();
+            res.send(result);
+        } catch (error) {
+            res.status(500).send({ message: "Error fetching teacher classes", error });
+        }
+    });
+
+    app.delete('/classes/:id', verifyToken, verifyTeacher, async (req, res) => {
+        try {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+    
+            // Optional: Ensure the person deleting the class is the one who created it
+            const targetClass = await classesCollection.findOne(query);
+            if (targetClass.email !== req.decoded.email) {
+                return res.status(403).send({ message: 'You can only delete your own classes' });
+            }
+    
+            const result = await classesCollection.deleteOne(query);
+            res.send(result);
+        } catch (error) {
+            res.status(500).send({ message: "Error deleting class", error });
+        }
+    });
+
     app.post("/classes", verifyToken, verifyTeacher, async (req, res) => {
       const newClass = req.body;
       const result = await classesCollection.insertOne(newClass);
