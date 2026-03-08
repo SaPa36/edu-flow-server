@@ -7,7 +7,13 @@ const port = process.env.PORT || 5008;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 // Middleware
-app.use(cors());
+app.use(cors(
+    [
+        "https://console.firebase.google.com/project/edu-flow-ef9b1/overview",
+        "https://edu-flow-ef9b1.web.app",
+        "http://localhost:5173",
+    ]
+));
 app.use(express.json());
 
 // 1. GLOBAL VARIABLE (The Key)
@@ -66,7 +72,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        //await client.connect();
 
         usersCollection = client.db("eduflowDB").collection("users");
         const teachersRequestCollection = client
@@ -119,6 +125,13 @@ async function run() {
             res.send({ teacher });
         });
 
+        app.delete("/teachers-requests/:id", verifyToken,  async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await teachersRequestCollection.deleteOne(query);
+            res.send(result);
+        });
+
         // Update this route in your server.js
         app.patch(
             "/teachers-requests/approve/:id",
@@ -152,21 +165,30 @@ async function run() {
             }
         );
 
-       
+
         app.patch(
             "/teachers-requests/reject/:id",
             verifyToken,
             verifyAdmin,
             async (req, res) => {
                 const id = req.params.id;
+                const { email } = req.body; // Ensure you are receiving this
                 const query = { _id: new ObjectId(id) };
-                const updatedRequest = {
-                    $set: { status: "rejected" },
-                };
-                const result = await teachersRequestCollection.updateOne(query, updatedRequest);
 
-                // CHANGE THIS: Send the result wrapped in an object so the frontend logic matches
-                res.send({ requestResult: result });
+                // 1. Update request status to rejected
+                const requestResult = await teachersRequestCollection.updateOne(
+                    query,
+                    { $set: { status: "rejected" } }
+                );
+
+                // 2. IMPORTANT: Demote the user back to "student"
+                const userResult = await usersCollection.updateOne(
+                    { email: email },
+                    { $set: { role: "student" } }
+                );
+                
+
+                res.send({ requestResult, userResult });
             }
         );
 
@@ -308,7 +330,7 @@ async function run() {
         });
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        //await client.db("admin").command({ ping: 1 });
         console.log(
             "Pinged your deployment. You successfully connected to MongoDB!"
         );
