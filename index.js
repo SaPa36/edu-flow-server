@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const app = express();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5008;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -79,6 +80,7 @@ async function run() {
             .db("eduflowDB")
             .collection("teachers-request");
         const classesCollection = client.db("eduflowDB").collection("classes");
+        const paymentsCollection = client.db("eduflowDB").collection("payments");
 
         // JWT releted API
         app.post("/jwt", (req, res) => {
@@ -125,7 +127,7 @@ async function run() {
             res.send({ teacher });
         });
 
-        app.delete("/teachers-requests/:id", verifyToken,  async (req, res) => {
+        app.delete("/teachers-requests/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await teachersRequestCollection.deleteOne(query);
@@ -186,7 +188,7 @@ async function run() {
                     { email: email },
                     { $set: { role: "student" } }
                 );
-                
+
 
                 res.send({ requestResult, userResult });
             }
@@ -326,6 +328,27 @@ async function run() {
         app.post("/classes", verifyToken, verifyTeacher, async (req, res) => {
             const newClass = req.body;
             const result = await classesCollection.insertOne(newClass);
+            res.send(result);
+        });
+
+        //payment related api will be here
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
+
+        app.post('/payments', verifyToken, async (req, res) => {
+            const payment = req.body;
+            const result = await paymentsCollection.insertOne(payment);
+            // CRITICAL: Ensure you send this back so the frontend knows it finished!
             res.send(result);
         });
 
