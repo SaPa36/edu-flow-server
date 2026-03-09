@@ -332,6 +332,17 @@ async function run() {
         });
 
         //payment related api will be here
+
+        app.get("/payments/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            if (req.decoded.email !== email) {
+                return res.status(403).send({ message: "forbidden access" });
+            }
+            const query = { email: email };
+            const result = await paymentsCollection.find(query).toArray();
+            res.send(result);
+        });
+        
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
             const amount = parseInt(price * 100);
