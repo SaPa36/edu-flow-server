@@ -225,6 +225,22 @@ async function run() {
             res.send({ admin });
         });
 
+        app.patch('/users/:email', verifyToken, async (req, res) => {
+          const email = req.params.email;
+          const updatedData = req.body;
+          const filter = { email: email };
+          const updateDoc = {
+              $set: {
+                  name: updatedData.name,
+                  image: updatedData.image,
+                  bio: updatedData.bio 
+              },
+          };
+          const result = await usersCollection.updateOne(filter, updateDoc);
+          res.send(result);
+      });
+
+
         app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
