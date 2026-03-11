@@ -202,7 +202,7 @@ async function run() {
             res.send(result);
         });
 
-        // Inside your server's run() function
+
         app.get("/users/:email", async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
@@ -248,6 +248,40 @@ async function run() {
                 res.send(result);
             }
         );
+
+        // Admin Stats Endpoint
+        app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                // 1. Get counts from different collections
+                const totalUsers = await usersCollection.estimatedDocumentCount();
+                const totalClasses = await classesCollection.estimatedDocumentCount();
+
+                // 2. Aggregate payments for revenue
+                const result = await paymentsCollection.aggregate([
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: { $sum: '$price' }
+                        }
+                    }
+                ]).toArray();
+
+                const totalRevenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+                // 3. Count pending requests
+                const pendingRequests = await classesCollection.countDocuments({ status: 'pending' });
+
+                res.send({
+                    totalUsers,
+                    totalClasses,
+                    totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+                    pendingRequests
+                });
+
+            } catch (error) {
+                res.status(500).send({ message: "Error fetching admin stats" });
+            }
+        });
 
         app.post("/users", async (req, res) => {
             const user = req.body;
@@ -325,6 +359,8 @@ async function run() {
             }
         });
 
+
+
         app.post("/classes", verifyToken, verifyTeacher, async (req, res) => {
             const newClass = req.body;
             const result = await classesCollection.insertOne(newClass);
@@ -342,7 +378,7 @@ async function run() {
             const result = await paymentsCollection.find(query).toArray();
             res.send(result);
         });
-        
+
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
             const amount = parseInt(price * 100);
