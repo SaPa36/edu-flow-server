@@ -226,19 +226,19 @@ async function run() {
         });
 
         app.patch('/users/:email', verifyToken, async (req, res) => {
-          const email = req.params.email;
-          const updatedData = req.body;
-          const filter = { email: email };
-          const updateDoc = {
-              $set: {
-                  name: updatedData.name,
-                  image: updatedData.image,
-                  bio: updatedData.bio 
-              },
-          };
-          const result = await usersCollection.updateOne(filter, updateDoc);
-          res.send(result);
-      });
+            const email = req.params.email;
+            const updatedData = req.body;
+            const filter = { email: email };
+            const updateDoc = {
+                $set: {
+                    name: updatedData.name,
+                    image: updatedData.image,
+                    bio: updatedData.bio
+                },
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            res.send(result);
+        });
 
 
         app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
@@ -299,6 +299,7 @@ async function run() {
             }
         });
 
+
         app.post("/users", async (req, res) => {
             const user = req.body;
             const query = { email: user.email };
@@ -337,6 +338,38 @@ async function run() {
                 res
                     .status(500)
                     .send({ message: "Error fetching teacher classes", error });
+            }
+        });
+
+        // PUT/PATCH route to update a specific class
+        app.patch('/classes/:id', verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const updatedData = req.body;
+
+            // Create the filter to find the class by its _id
+            const filter = { _id: new ObjectId(id) };
+
+            // Define the update operation
+            const updateDoc = {
+                $set: {
+                    title: updatedData.title,
+                    price: updatedData.price,
+                    description: updatedData.description,
+                    image: updatedData.image // This stores the new image URL returned from ImgBB
+                }
+            };
+
+            try {
+                // Perform the update
+                const result = await classesCollection.updateOne(filter, updateDoc);
+
+                if (result.matchedCount === 0) {
+                    return res.status(404).send({ message: "Class not found" });
+                }
+
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: "Failed to update class", error });
             }
         });
 
